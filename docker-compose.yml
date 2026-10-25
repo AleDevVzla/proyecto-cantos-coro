@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cantos-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cantos_user
+      POSTGRES_PASSWORD: cantos_password
+      POSTGRES_DB: cantos_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - cantos_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cantos_user -d cantos_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: cantos-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://cantos_user:cantos_password@db:5432/cantos_db?schema=public"
+      JWT_SECRET: "cantos-liturgicos-super-secret-jwt-key-2026"
+      PORT: "4000"
+    ports:
+      - "4000:4000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: "http://localhost:4000"
+    container_name: cantos-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+
+volumes:
+  cantos_pgdata:
