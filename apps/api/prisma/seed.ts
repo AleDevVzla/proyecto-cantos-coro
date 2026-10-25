@@ -7,95 +7,103 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 async function main() {
-  console.log('🌱 Iniciando seed de Base de Datos (Versión 1)...');
-
-  const existingChoirs = await prisma.choir.count();
-  if (existingChoirs > 0) {
-    console.log('✅ La base de datos ya contiene datos iniciales. Saltando seed.');
-    return;
-  }
+  console.log('🌱 Iniciando seed de Base de Datos (Versión 2 - Sistema Completo)...');
 
   const defaultPass = await hashPassword('123456');
 
-  // 1. Crear dos coros para demostrar el alcance privado vs público entre coros
-  const coroSantaCecilia = await prisma.choir.create({
-    data: {
-      name: 'Coro Santa Cecilia',
-      parish: 'Parroquia San José',
-      inviteCode: 'CECILIA-2026',
-    },
+  let coroSantaCecilia = await prisma.choir.findUnique({
+    where: { inviteCode: 'CECILIA-2026' },
   });
 
-  const coroSanMiguel = await prisma.choir.create({
-    data: {
-      name: 'Coro San Miguel Arcángel',
-      parish: 'Parroquia Cristo Rey',
-      inviteCode: 'MIGUEL-2026',
-    },
-  });
-
-  // 2. Crear usuarios con roles DIRECTOR y MEMBER
-  const directorAlejandro = await prisma.user.create({
-    data: {
-      email: 'director@santacecilia.org',
-      name: 'Alejandro Morales (Director)',
-      passwordHash: defaultPass,
-      memberships: {
-        create: {
-          choirId: coroSantaCecilia.id,
-          role: 'DIRECTOR',
-          instrument: 'Guitarra y Dirección',
-        },
+  if (!coroSantaCecilia) {
+    coroSantaCecilia = await prisma.choir.create({
+      data: {
+        name: 'Coro Santa Cecilia',
+        parish: 'Parroquia San José',
+        inviteCode: 'CECILIA-2026',
       },
-    },
+    });
+  }
+
+  let coroSanMiguel = await prisma.choir.findUnique({
+    where: { inviteCode: 'MIGUEL-2026' },
   });
 
-  await prisma.user.create({
-    data: {
-      email: 'miembro@santacecilia.org',
-      name: 'María Fernanda (Soprano)',
-      passwordHash: defaultPass,
-      memberships: {
-        create: {
-          choirId: coroSantaCecilia.id,
-          role: 'MEMBER',
-          instrument: 'Voz Soprano',
-        },
+  if (!coroSanMiguel) {
+    coroSanMiguel = await prisma.choir.create({
+      data: {
+        name: 'Coro San Miguel Arcángel',
+        parish: 'Parroquia Cristo Rey',
+        inviteCode: 'MIGUEL-2026',
       },
-    },
-  });
+    });
+  }
 
-  const directorCarlos = await prisma.user.create({
-    data: {
-      email: 'director@sanmiguel.org',
-      name: 'Carlos Mendoza (Director)',
-      passwordHash: defaultPass,
-      memberships: {
-        create: {
-          choirId: coroSanMiguel.id,
-          role: 'DIRECTOR',
-          instrument: 'Teclado y Dirección',
+  const ensureUser = async (
+    email: string,
+    name: string,
+    choirId: string,
+    role: 'DIRECTOR' | 'MEMBER',
+    instrument: string
+  ) => {
+    let u = await prisma.user.findUnique({ where: { email } });
+    if (!u) {
+      u = await prisma.user.create({
+        data: {
+          email,
+          name,
+          passwordHash: defaultPass,
+          memberships: {
+            create: { choirId, role, instrument },
+          },
         },
-      },
-    },
-  });
+      });
+    }
+    return u;
+  };
 
-  await prisma.user.create({
-    data: {
-      email: 'miembro@sanmiguel.org',
-      name: 'Lucía Gómez (Contralto)',
-      passwordHash: defaultPass,
-      memberships: {
-        create: {
-          choirId: coroSanMiguel.id,
-          role: 'MEMBER',
-          instrument: 'Voz Contralto',
-        },
-      },
-    },
-  });
+  const directorAlejandro = await ensureUser(
+    'director@santacecilia.org',
+    'Alejandro Morales (Director)',
+    coroSantaCecilia.id,
+    'DIRECTOR',
+    'Guitarra y Dirección'
+  );
 
-  // 3. Crear repertorio completo cubriendo los 5 tiempos litúrgicos y Litúrgico / No litúrgico
+  await ensureUser(
+    'miembro@santacecilia.org',
+    'María Fernanda (Soprano)',
+    coroSantaCecilia.id,
+    'MEMBER',
+    'Voz Soprano'
+  );
+
+  await ensureUser(
+    'tenor@santacecilia.org',
+    'Javier Rojas (Tenor)',
+    coroSantaCecilia.id,
+    'MEMBER',
+    'Voz Tenor y Cajón'
+  );
+
+  const directorCarlos = await ensureUser(
+    'director@sanmiguel.org',
+    'Carlos Mendoza (Director)',
+    coroSanMiguel.id,
+    'DIRECTOR',
+    'Teclado y Dirección'
+  );
+
+  await ensureUser(
+    'miembro@sanmiguel.org',
+    'Lucía Gómez (Contralto)',
+    coroSanMiguel.id,
+    'MEMBER',
+    'Voz Contralto'
+  );
+
+  const existingSongCount = await prisma.song.count();
+  if (existingSongCount === 0) {
   await prisma.song.createMany({
     data: [
       {
@@ -288,6 +296,7 @@ bus[Re7]cando, Señor, tu [Sol]fe.`,
         baseKey: 'Do',
         liturgicalSeasons: ['ORDINARIO', 'CUARESMA'],
         massSuitability: 'NO_LITURGICO',
+        massMoments: ['Meditación / Poscomunión'],
         isPublic: true,
         lyricsAndChords: `{ESTROFA 1}
 [Do]Cuánto he esperado este mo[Sol]mento,
@@ -307,8 +316,298 @@ bus[Re7]cando, Señor, tu [Sol]fe.`,
       },
     ],
   });
+  }
 
-  console.log('✅ Seed completado con éxito.');
+  // Asegurar cantos ordinarios de la misa (Piedad, Gloria, Ofertorio, Santo, Cordero)
+  const ensureMassSong = async (
+    title: string,
+    author: string,
+    baseKey: string,
+    moment: string,
+    lyricsAndChords: string
+  ) => {
+    const found = await prisma.song.findFirst({ where: { title } });
+    if (!found) {
+      return await prisma.song.create({
+        data: {
+          choirId: coroSantaCecilia.id,
+          createdById: directorAlejandro.id,
+          title,
+          author,
+          baseKey,
+          liturgicalSeasons: ['ORDINARIO', 'PASCUA', 'NAVIDAD'],
+          massSuitability: 'LITURGICO',
+          massMoments: [moment],
+          isPublic: true,
+          lyricsAndChords,
+        },
+      });
+    }
+    return found;
+  };
+
+  const sPiedad = await ensureMassSong(
+    'Señor Ten Piedad (Tradicional)',
+    'Liturgia Parroquial',
+    'Mim',
+    'Señor Ten Piedad',
+    `{ESTROFA 1}\n[Mim]Señor, ten pie[Lam]dad de no[Mim]sotros.\n[Do]Señor, ten pie[Si7]dad de no[Mim]sotros.\n\n{CORO}\n[Sol]Cristo, ten pie[Re]dad de no[Sol]sotros.\n[Lam]Cristo, ten pie[Si7]dad de no[Mim]sotros.`
+  );
+
+  const sGloria = await ensureMassSong(
+    'Gloria a Dios en el Cielo (Giombini)',
+    'Marcello Giombini',
+    'Re',
+    'Gloria',
+    `{CORO}\n[Re]Gloria, [La]gloria, a [Sim]Dios en el [Fa#m]cielo,\ny en la [Sol]tierra a los [Re]hombres [Mim]paz.[La]\n\n{ESTROFA 1}\n[Re]Te alabamos y te [La]bendecimos,\n[Sim]te adoramos y glorifi[Fa#m]camos.`
+  );
+
+  const sOfertorio = await ensureMassSong(
+    'Te Presentamos el Vino y el Pan',
+    'Juan Antonio Espinosa',
+    'Sol',
+    'Ofertorio',
+    `{CORO}\n[Sol]Te presentamos el [Do]vino y el [Sol]pan,\nben[Do]dito seas por [Re]siempre, Se[Sol]ñor.\n\n{ESTROFA 1}\n[Sol]Bendito seas, Se[Do]ñor, por este [Sol]pan que nos diste,\n[Do]fruto de la [Sol]tierra y del tra[Re]bajo de los hombres.`
+  );
+
+  const sSanto = await ensureMassSong(
+    'Santo es el Señor (Solemne)',
+    'Tradicional Litúrgico',
+    'Lam',
+    'Santo',
+    `{ESTROFA 1}\n[Lam]Santo, Santo, [Sol]Santo es el Se[Fa]ñor,\nDios del uni[Mi]verso.\n[Lam]Llenos están el [Sol]cielo y la [Fa]tierra\nde tu [Mi]gloria, hosanna.\n\n{CORO}\n[Lam]Hosanna, [Rem]hosanna,\n[Sol]hosanna en el [Do]cielo.[Mi]`
+  );
+
+  const sCordero = await ensureMassSong(
+    'Cordero de Dios (Coral)',
+    'Arreglo Santa Cecilia',
+    'Do',
+    'Cordero de Dios / Paz',
+    `{ESTROFA 1}\n[Do]Cordero de [Sol]Dios que [Lam]quitas\nel pe[Fa]cado del [Sol]mundo,\n[Fa]ten piedad de no[Sol]sotros, [Do]ten pie[Sol]dad.\n\n{FINAL}\n[Do]Cordero de [Sol]Dios que [Lam]quitas\nel pe[Fa]cado del [Sol]mundo,\n[Fa]danos la [Sol]paz, [Fa]danos [Sol]la [Do]paz.`
+  );
+
+  const sEntrada = await prisma.song.findFirst({
+    where: { title: { contains: 'Juntos como Hermanos' } },
+  });
+  const sComunion = await prisma.song.findFirst({
+    where: { title: { contains: 'Alma de Cristo' } },
+  });
+  const sSalida = await prisma.song.findFirst({
+    where: { title: { contains: 'Pueblo de Reyes' } },
+  });
+
+  // 4. Crear Cronogramas de Misa, Ensayo y Eventos del Calendario si están vacíos
+  const existingMassCount = await prisma.massSchedule.count();
+  if (existingMassCount === 0) {
+    const massDominical = await prisma.massSchedule.create({
+      data: {
+        choirId: coroSantaCecilia.id,
+        title: 'Misa Dominical Solemne (11:00 AM)',
+        date: new Date('2026-10-25T11:00:00.000Z'),
+        liturgicalSeason: 'ORDINARIO',
+        celebrantNotes:
+          'Celebrante: Pbro. Roberto Jiménez. Procesión solemne de entrada.',
+        items: {
+          create: [
+            {
+              sortOrder: 1,
+              momentName: 'Entrada',
+              songId: sEntrada?.id,
+              targetKey: 'Re',
+              directorNotes: 'Inicia guitarra con rasgueo firme; entra todo el coro.',
+            },
+            {
+              sortOrder: 2,
+              momentName: 'Señor Ten Piedad',
+              songId: sPiedad.id,
+              targetKey: 'Mim',
+              directorNotes: 'Solista soprano en las invocaciones; coro responde.',
+            },
+            {
+              sortOrder: 3,
+              momentName: 'Gloria',
+              songId: sGloria.id,
+              targetKey: 'Re',
+              directorNotes: 'Cantar a dos voces en el estribillo.',
+            },
+            {
+              sortOrder: 4,
+              momentName: 'Ofertorio',
+              songId: sOfertorio.id,
+              targetKey: 'Sol',
+              directorNotes: 'Volumen suave durante la procesión de ofrendas.',
+            },
+            {
+              sortOrder: 5,
+              momentName: 'Santo',
+              songId: sSanto.id,
+              targetKey: 'Lam',
+              directorNotes: 'Cuidar el corte final en Hosanna.',
+            },
+            {
+              sortOrder: 6,
+              momentName: 'Cordero de Dios / Paz',
+              songId: sCordero.id,
+              targetKey: 'Do',
+              directorNotes: 'Arpegio delicado en la última petición.',
+            },
+            {
+              sortOrder: 7,
+              momentName: 'Comunión',
+              songId: sComunion?.id,
+              targetKey: 'Mi',
+              directorNotes: 'Canto público compartido por el Coro San Miguel.',
+            },
+            {
+              sortOrder: 8,
+              momentName: 'Salida',
+              songId: sSalida?.id,
+              targetKey: 'Sol',
+              directorNotes: 'Iniciar inmediatamente tras el "Demos gracias a Dios".',
+            },
+          ],
+        },
+      },
+    });
+
+    const rehearsalSabado = await prisma.rehearsalSchedule.create({
+      data: {
+        choirId: coroSantaCecilia.id,
+        title: 'Ensayo General Pre-Misa Dominical',
+        date: new Date('2026-10-24T17:00:00.000Z'),
+        location: 'Salón Santa Cecilia (Parroquia San José)',
+        generalObjective:
+          'Dejar ensamblado a cabalidad el repertorio de la Misa Dominical de 11:00 AM, puliendo las segundas voces del Santo y la dinámica del canto de Comunión.',
+        blocks: {
+          create: [
+            {
+              sortOrder: 1,
+              title: 'Oración Inicial y Afinación de Instrumentos',
+              blockType: 'ORACION',
+              durationMinutes: 10,
+              detailedNotes:
+                'Lectura breve del Evangelio del domingo, oración del coro y afinación de guitarras en 440Hz.',
+              isCompleted: true,
+            },
+            {
+              sortOrder: 2,
+              title: 'Técnica Vocal y Respiración Diafragmática',
+              blockType: 'VOCALIZACION',
+              durationMinutes: 15,
+              detailedNotes:
+                'Ejercicios de apoyo respiratorio (4 tiempos inhalar, 4 sostener, 8 exhalar en S) y vocalización por cuerdas (Sopranos, Contraltos y Tenores).',
+              isCompleted: true,
+            },
+            {
+              sortOrder: 3,
+              title: 'Armonización de Voces: Santo y Cordero de Dios',
+              blockType: 'PRACTICA_CANTO',
+              durationMinutes: 25,
+              detailedNotes:
+                'Practicar a capella las entradas de segundas voces en "Hosanna en el cielo" y el matiz piano en "danos la paz".',
+              isCompleted: false,
+              songs: {
+                create: [
+                  {
+                    songId: sSanto.id,
+                    focusNotes: 'Cuidar entrada de tenores en Hosanna',
+                  },
+                  {
+                    songId: sCordero.id,
+                    focusNotes: 'Rallentando en el último compás',
+                  },
+                ],
+              },
+            },
+            {
+              sortOrder: 4,
+              title: 'Montaje de Canto de Comunión: Alma de Cristo',
+              blockType: 'PRACTICA_CANTO',
+              durationMinutes: 25,
+              detailedNotes:
+                'Estudiar estrofa por estrofa el arreglo público del Coro San Miguel. Ajustar cejilla y transiciones armónicas.',
+              isCompleted: false,
+              songs: sComunion
+                ? {
+                    create: [
+                      {
+                        songId: sComunion.id,
+                        focusNotes: 'Practicar en tono original Mi mayor',
+                      },
+                    ],
+                  }
+                : undefined,
+            },
+            {
+              sortOrder: 5,
+              title: 'Simulacro Continuo de Misa y Avisos Parroquiales',
+              blockType: 'REPASO_MISA',
+              durationMinutes: 20,
+              detailedNotes:
+                'Pasar en orden Entrada, Piedad, Gloria, Ofertorio y Salida sin interrupciones para medir tiempos de cambio de tono.',
+              isCompleted: false,
+              songs: {
+                create: [
+                  ...(sEntrada ? [{ songId: sEntrada.id }] : []),
+                  { songId: sGloria.id },
+                  { songId: sOfertorio.id },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    await prisma.calendarEvent.createMany({
+      data: [
+        {
+          choirId: coroSantaCecilia.id,
+          title: 'Ensayo General Pre-Misa',
+          description:
+            'Ensayo estructurado por bloques para preparar la Misa Dominical.',
+          location: 'Salón Santa Cecilia',
+          startAt: new Date('2026-10-24T17:00:00.000Z'),
+          endAt: new Date('2026-10-24T18:35:00.000Z'),
+          type: 'REHEARSAL',
+          rehearsalScheduleId: rehearsalSabado.id,
+        },
+        {
+          choirId: coroSantaCecilia.id,
+          title: 'Misa Dominical Solemne (11:00 AM)',
+          description:
+            'Celebración Eucarística Dominical. Llegar 20 minutos antes.',
+          location: 'Templo Parroquial San José',
+          startAt: new Date('2026-10-25T11:00:00.000Z'),
+          endAt: new Date('2026-10-25T12:15:00.000Z'),
+          type: 'MASS',
+          massScheduleId: massDominical.id,
+        },
+        {
+          choirId: coroSantaCecilia.id,
+          title: 'Reunión de Planificación de Adviento y Navidad',
+          description:
+            'Selección del repertorio de Adviento y Navidad con todo el coro.',
+          location: 'Salón Parroquial',
+          startAt: new Date('2026-10-28T19:00:00.000Z'),
+          endAt: new Date('2026-10-28T20:30:00.000Z'),
+          type: 'IMPORTANT_EVENT',
+        },
+        {
+          choirId: coroSantaCecilia.id,
+          title: 'Vigilia Solemne de Todos los Santos',
+          description:
+            'Noche de adoración y canto litúrgico junto a los grupos parroquiales.',
+          location: 'Capilla del Santísimo',
+          startAt: new Date('2026-10-31T20:00:00.000Z'),
+          endAt: new Date('2026-10-31T21:30:00.000Z'),
+          type: 'IMPORTANT_EVENT',
+        },
+      ],
+    });
+  }
+
+  console.log('✅ Seed completado con éxito (Sistema Completo V2).');
 }
 
 main()

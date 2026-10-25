@@ -308,3 +308,105 @@ export const COMMON_KEYS = [
   'Lam',
   'Sim',
 ];
+
+export function getSemitoneDiffBetweenKeys(
+  fromKey: string,
+  toKey: string
+): number {
+  const m1 = fromKey.trim().match(ROOT_REGEX);
+  const m2 = toKey.trim().match(ROOT_REGEX);
+  if (!m1 || !m2) return 0;
+  const idx1 = ENHARMONIC_MAP[m1[1]];
+  const idx2 = ENHARMONIC_MAP[m2[1]];
+  if (idx1 === undefined || idx2 === undefined) return 0;
+  let diff = idx2 - idx1;
+  if (diff > 6) diff -= 12;
+  if (diff < -6) diff += 12;
+  return diff;
+}
+
+// ============================================================================
+// CONSTANTES DE CRONOGRAMA DE MISA, ENSAYO Y CALENDARIO (SISTEMA COMPLETO)
+// ============================================================================
+
+export const MASS_MOMENTS_ORDERED = [
+  'Entrada',
+  'Señor Ten Piedad',
+  'Gloria',
+  'Salmo Responsorial',
+  'Aleluya / Aclamación',
+  'Ofertorio',
+  'Santo',
+  'Cordero de Dios / Paz',
+  'Comunión',
+  'Meditación / Poscomunión',
+  'Salida',
+] as const;
+
+export type CalendarEventType = 'MASS' | 'REHEARSAL' | 'IMPORTANT_EVENT';
+
+export const CALENDAR_EVENT_TYPES: {
+  id: CalendarEventType;
+  label: string;
+  badgeClass: string;
+  dotClass: string;
+}[] = [
+  {
+    id: 'MASS',
+    label: 'Santa Misa',
+    badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
+    dotClass: 'bg-amber-500',
+  },
+  {
+    id: 'REHEARSAL',
+    label: 'Ensayo del Coro',
+    badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+    dotClass: 'bg-emerald-500',
+  },
+  {
+    id: 'IMPORTANT_EVENT',
+    label: 'Evento Importante',
+    badgeClass: 'bg-purple-100 text-purple-900 border-purple-300',
+    dotClass: 'bg-purple-500',
+  },
+];
+
+export type RehearsalBlockType =
+  | 'ORACION'
+  | 'VOCALIZACION'
+  | 'PRACTICA_CANTO'
+  | 'REPASO_MISA'
+  | 'AVISOS';
+
+export const REHEARSAL_BLOCK_TYPES: {
+  id: RehearsalBlockType;
+  label: string;
+  badgeClass: string;
+}[] = [
+  {
+    id: 'ORACION',
+    label: 'Oración y Bienvenida',
+    badgeClass: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+  },
+  {
+    id: 'VOCALIZACION',
+    label: 'Técnica Vocal / Afinación',
+    badgeClass: 'bg-sky-50 text-sky-800 border-sky-200',
+  },
+  {
+    id: 'PRACTICA_CANTO',
+    label: 'Estudio de Canto / Voces',
+    badgeClass: 'bg-amber-50 text-amber-900 border-amber-200',
+  },
+  {
+    id: 'REPASO_MISA',
+    label: 'Ensamble General de Misa',
+    badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+  },
+  {
+    id: 'AVISOS',
+    label: 'Avisos y Cierre',
+    badgeClass: 'bg-stone-100 text-stone-700 border-stone-300',
+  },
+];
+

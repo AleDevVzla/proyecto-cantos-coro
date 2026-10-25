@@ -1,6 +1,27 @@
-# Cantoral Coral — Sistema de Gestión de Cantos Litúrgicos (Versión 1.0)
+# Cantoral Coral — Sistema Integral de Gestión de Coros, Cantos, Misas y Ensayos (Versión 2.0 Completa)
 
-Plataforma web cerrada bajo autenticación para la gestión, clasificación litúrgica y búsqueda libre de cantos con letras y acordes interactivos para coros.
+Plataforma web integral, cerrada bajo autenticación, para la gestión del repertorio litúrgico, calendario manipulable de eventos, estructuración de cronogramas de misa (con vista de letra y acordes en orden) y planificación detallada de ensayos para coros.
+
+---
+
+## 🌟 Módulos Incluidos en el Sistema Completo
+1. **Autenticación Cerrada y Control de Roles (`Director` y `Miembro`)**.
+2. **Buscador Libre y Gestión de Cantos**:
+   - Subida exclusiva por el Director con decisión de visibilidad **Público (para otros coros)** o **Privado (solo mi coro)**.
+   - División por Tiempo en el Año en el orden exacto: **Ordinario - Cuaresma - Pascua - Adviento - Navidad**.
+   - División por Apropiación para Misa: **Litúrgico - No litúrgico**.
+   - Visor interactivo de letra y acordes con transposición de tono (`-1` / `+1`) y Modo Atril.
+3. **Calendario Manipulable del Coro**:
+   - Cuadrícula mensual interactiva + Agenda.
+   - Reprogramación de eventos mediante **Drag & Drop** (arrastrar y soltar) o controles rápidos.
+   - Vinculación en 1 clic a Cronogramas de Misa y Cronogramas de Ensayo.
+4. **Cronogramas de Misa + Modo Atril en Vivo**:
+   - Estructuración del orden litúrgico de los cantos de una Misa, con definición de tono específico para esa celebración y notas del director.
+   - Vista de lectura paso a paso o continua de la letra y acordes de toda la Misa en orden.
+5. **Cronogramas de Ensayo ("Saber qué se hará a cabalidad")**:
+   - Planificación exhaustiva por bloques de actividad y duración, objetivo general, checklist de avance en tiempo real y cantos vinculados con acceso directo a letra y acordes.
+6. **Gestión de Mi Coro**:
+   - Listado de miembros, instrumentos/voces y código de invitación.
 
 ---
 
