@@ -9,12 +9,19 @@ import {
   getStoredToken,
   setStoredToken,
   type AuthUser,
+  type CalendarEventDTO,
   type CreateOrUpdateSongInput,
+  type MassScheduleDTO,
+  type RehearsalScheduleDTO,
   type SongDTO,
 } from './lib/api';
 import { LoginView } from './components/LoginView';
 import { ChordSheetViewer } from './components/ChordSheetViewer';
 import { SongFormModal } from './components/SongFormModal';
+import { CalendarView } from './components/CalendarView';
+import { MassSchedulesView } from './components/MassSchedulesView';
+import { RehearsalSchedulesView } from './components/RehearsalSchedulesView';
+import { ChoirMembersView } from './components/ChoirMembersView';
 import {
   Music2,
   Search,
@@ -30,11 +37,17 @@ import {
   Sparkles,
   Filter,
   KeyRound,
+  Calendar as CalendarIcon,
+  ClipboardList,
+  Users,
 } from 'lucide-react';
+
+type ActiveModuleTab = 'SONGS' | 'CALENDAR' | 'MASS' | 'REHEARSAL' | 'CHOIR';
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
+  const [activeTab, setActiveTab] = useState<ActiveModuleTab>('SONGS');
 
   // Filtros del Buscador Libre de Cantos
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,8 +62,18 @@ export const App: React.FC = () => {
   >('ALL');
 
   const [songs, setSongs] = useState<SongDTO[]>([]);
+  const [allAvailableSongs, setAllAvailableSongs] = useState<SongDTO[]>([]);
   const [loadingSongs, setLoadingSongs] = useState(false);
   const [activeSong, setActiveSong] = useState<SongDTO | null>(null);
+
+  // Datos de Calendario, Misas y Ensayos
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEventDTO[]>([]);
+  const [massSchedules, setMassSchedules] = useState<MassScheduleDTO[]>([]);
+  const [rehearsalSchedules, setRehearsalSchedules] = useState<
+    RehearsalScheduleDTO[]
+  >([]);
+  const [jumpMassId, setJumpMassId] = useState<string | null>(null);
+  const [jumpRehearsalId, setJumpRehearsalId] = useState<string | null>(null);
 
   // Modal de subida / edición (exclusivo Director)
   const [showSongModal, setShowSongModal] = useState(false);
@@ -97,9 +120,31 @@ export const App: React.FC = () => {
     }
   }, [user, searchQuery, selectedSeason, selectedSuitability, selectedScope]);
 
+  const fetchAllSchedulesAndCalendar = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [allSongsRes, calRes, massRes, rehRes] = await Promise.all([
+        api.getSongs({ scope: 'ALL' }),
+        api.getCalendarEvents(),
+        api.getMassSchedules(),
+        api.getRehearsalSchedules(),
+      ]);
+      setAllAvailableSongs(allSongsRes.songs);
+      setCalendarEvents(calRes.events);
+      setMassSchedules(massRes.schedules);
+      setRehearsalSchedules(rehRes.rehearsals);
+    } catch (err) {
+      console.error('Error cargando módulos de planificación:', err);
+    }
+  }, [user]);
+
   useEffect(() => {
     fetchSongs();
   }, [fetchSongs]);
+
+  useEffect(() => {
+    fetchAllSchedulesAndCalendar();
+  }, [fetchAllSchedulesAndCalendar]);
 
   const handleLoginSuccess = (token: string, loggedUser: AuthUser) => {
     setStoredToken(token);
@@ -122,6 +167,7 @@ export const App: React.FC = () => {
       setActiveSong(res.song);
     }
     await fetchSongs();
+    await fetchAllSchedulesAndCalendar();
   };
 
   const handleToggleSongPublic = async (song: SongDTO) => {
@@ -138,6 +184,7 @@ export const App: React.FC = () => {
     });
     setActiveSong(res.song);
     await fetchSongs();
+    await fetchAllSchedulesAndCalendar();
   };
 
   const handleDeleteSong = async (song: SongDTO) => {
@@ -145,6 +192,7 @@ export const App: React.FC = () => {
     await api.deleteSong(song.id);
     setActiveSong(null);
     await fetchSongs();
+    await fetchAllSchedulesAndCalendar();
   };
 
   if (authChecking) {
@@ -244,10 +292,65 @@ export const App: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Barra de Navegación Principal (5 Módulos del Sistema Completo) */}
+        <div className="border-t border-stone-800 bg-stone-950/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-wrap items-center gap-1.5 py-2">
+            {(
+              [
+                {
+                  id: 'SONGS',
+                  label: 'Buscador de Cantos',
+                  icon: Music2,
+                },
+                {
+                  id: 'CALENDAR',
+                  label: 'Calendario Manipulable',
+                  icon: CalendarIcon,
+                },
+                {
+                  id: 'MASS',
+                  label: 'Cronograma de Misa',
+                  icon: BookOpen,
+                },
+                {
+                  id: 'REHEARSAL',
+                  label: 'Cronograma de Ensayos',
+                  icon: ClipboardList,
+                },
+                {
+                  id: 'CHOIR',
+                  label: 'Mi Coro',
+                  icon: Users,
+                },
+              ] as const
+            ).map((nav) => {
+              const Icon = nav.icon;
+              const isActive = activeTab === nav.id;
+              return (
+                <button
+                  key={nav.id}
+                  type="button"
+                  onClick={() => setActiveTab(nav.id)}
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition ${
+                    isActive
+                      ? 'bg-amber-500 text-stone-950 shadow-sm'
+                      : 'text-stone-300 hover:bg-stone-800 hover:text-white'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {nav.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </header>
 
-      {/* Panel de Búsqueda Libre y Clasificación Litúrgica */}
-      <section className="bg-white border-b border-stone-200 shadow-sm">
+      {activeTab === 'SONGS' ? (
+        <>
+          {/* Panel de Búsqueda Libre y Clasificación Litúrgica */}
+          <section className="bg-white border-b border-stone-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4">
           {/* Buscador Libre + Filtro Litúrgico/No Litúrgico + Alcance */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
@@ -593,6 +696,50 @@ export const App: React.FC = () => {
           )}
         </div>
       </main>
+        </>
+      ) : (
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+          {activeTab === 'CALENDAR' && (
+            <CalendarView
+              events={calendarEvents}
+              massSchedules={massSchedules}
+              rehearsalSchedules={rehearsalSchedules}
+              isDirector={isDirector}
+              onRefresh={fetchAllSchedulesAndCalendar}
+              onOpenMassSchedule={(id) => {
+                setJumpMassId(id);
+                setActiveTab('MASS');
+              }}
+              onOpenRehearsalSchedule={(id) => {
+                setJumpRehearsalId(id);
+                setActiveTab('REHEARSAL');
+              }}
+            />
+          )}
+
+          {activeTab === 'MASS' && (
+            <MassSchedulesView
+              schedules={massSchedules}
+              songs={allAvailableSongs}
+              isDirector={isDirector}
+              initialSelectedId={jumpMassId}
+              onRefresh={fetchAllSchedulesAndCalendar}
+            />
+          )}
+
+          {activeTab === 'REHEARSAL' && (
+            <RehearsalSchedulesView
+              rehearsals={rehearsalSchedules}
+              songs={allAvailableSongs}
+              isDirector={isDirector}
+              initialSelectedId={jumpRehearsalId}
+              onRefresh={fetchAllSchedulesAndCalendar}
+            />
+          )}
+
+          {activeTab === 'CHOIR' && <ChoirMembersView />}
+        </main>
+      )}
 
       {/* Modal de Subida / Edición de Canto para el Director */}
       {showSongModal && (

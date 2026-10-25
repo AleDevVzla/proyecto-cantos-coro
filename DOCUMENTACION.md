@@ -1,11 +1,15 @@
-# Documentación Técnica y Funcional — Sistema de Gestión de Cantos para Coros (Versión 1.0)
+# Documentación Técnica y Funcional — Sistema Integral de Gestión Coral y Litúrgica (Versión 2.0 Completa)
 
 ## 1. Descripción General del Sistema
-El **Sistema de Gestión de Cantos Litúrgicos** es una aplicación web moderna, responsiva e intuitiva diseñada para organizar, clasificar y compartir el repertorio musical de coros parroquiales y comunitarios dentro de un entorno **100% cerrado bajo autenticación**.
+El **Sistema Integral de Gestión de Cantos, Calendario, Misas y Ensayos** es una aplicación web moderna, responsiva e intuitiva diseñada para organizar, clasificar y compartir el repertorio musical y la planificación operativa de coros parroquiales y comunitarios dentro de un entorno **100% cerrado bajo autenticación**.
 
-El sistema implementa dos módulos nucleares:
+El sistema implementa seis módulos integrados:
 1. **Módulo de Autenticación Cerrada y Control de Acceso Basado en Roles (`Director` y `Miembro`)**.
 2. **Módulo de Gestión, Clasificación Litúrgica y Búsqueda Libre de Cantos con Acordes Interactivos**.
+3. **Módulo de Calendario Manipulable del Coro** (con soporte *Drag & Drop* para reprogramar eventos).
+4. **Módulo de Cronograma de Misa** (estructuración del orden litúrgico con lectura continua o paso a paso de letras y acordes).
+5. **Módulo de Cronograma de Ensayos** (planificación detallada por bloques de actividad, tiempos, objetivos y cantos vinculados).
+6. **Módulo de Comunidad y Miembros del Coro**.
 
 ---
 
@@ -62,6 +66,20 @@ Formulario intuitivo con previsualización en tiempo real que permite al Directo
   - Muestra la letra clara con los acordes posicionados en la parte superior de cada sílaba.
   - Incluye botones de **Transposición de Tono (`-1` / `+1` semitono)**, cambio entre notación Latina (`Do, Re, Mi`) y Americana (`C, D, E`), ajuste de tamaño de fuente y **Modo Atril Oscuro**.
 
+### 4.4. Calendario Manipulable del Coro
+- **Vista Mensual Interactiva y Agenda**: Muestra todos los eventos del coro clasificados en *Santa Misa*, *Ensayo del Coro* y *Evento Importante*.
+- **Manipulación Interactiva**: El Director puede arrastrar y soltar (*Drag & Drop*) cualquier evento sobre otro día del calendario (o usar los botones `-1 Día` / `+1 Día`) para reprogramar fechas instantáneamente.
+- **Conexión Directa**: Al seleccionar un evento de Misa o Ensayo, un botón directo abre su respectivo Cronograma de Misa o Cronograma de Ensayo.
+
+### 4.5. Cronograma de Misa y Modo Atril en Vivo
+- **Estructurador Litúrgico**: Permite armar el orden exacto de los cantos de una Misa (*Entrada, Señor Ten Piedad, Gloria, Salmo, Aleluya, Ofertorio, Santo, Cordero de Dios, Comunión, Salida*), reordenarlos, asignar el **tono específico** en que se tocará cada canto en esa misa y añadir notas del director.
+- **Alertas Litúrgicas**: Si el tiempo seleccionado es *Cuaresma* o *Adviento*, muestra un aviso pastoral sobre la omisión del Gloria y el uso de la aclamación.
+- **Modo Atril (Paso a Paso o Continuo)**: Permite recorrer todos los cantos de la Misa en orden viendo su letra y acordes automáticamente transportados al tono definido para esa celebración.
+
+### 4.6. Cronograma de Ensayos ("Saber qué se hará a cabalidad")
+- **Planificación por Bloques**: Divide el ensayo en bloques secuenciales (*Oración, Vocalización, Práctica de Canto, Repaso de Misa, Avisos*) con duración en minutos y cálculo automático del tiempo total.
+- **Instrucciones Exhaustivas y Checklist**: Cada bloque detalla qué se trabajará a cabalidad, permite marcar bloques completados con barra de porcentaje de avance, y vincula los cantos a practicar para abrir su letra y acordes en 1 clic.
+
 ---
 
 ## 5. Arquitectura y Stack Tecnológico
@@ -101,7 +119,7 @@ cantos/
 
 ---
 
-## 6. Modelo de Base de Datos (Esquema Relacional)
+## 6. Modelo de Base de Datos Completo (Esquema Relacional)
 
 ```mermaid
 erDiagram
@@ -109,50 +127,21 @@ erDiagram
     Choir ||--o{ ChoirMember : "integra"
     Choir ||--o{ Song : "posee repertorio"
     User ||--o{ Song : "registra (Director)"
-
-    User {
-        uuid id PK
-        string email UK
-        string passwordHash
-        string name
-        datetime createdAt
-    }
-
-    Choir {
-        uuid id PK
-        string name
-        string parish
-        string inviteCode UK
-        datetime createdAt
-    }
-
-    ChoirMember {
-        uuid id PK
-        uuid userId FK
-        uuid choirId FK
-        enum role "DIRECTOR | MEMBER"
-        string instrument
-    }
-
-    Song {
-        uuid id PK
-        uuid choirId FK
-        uuid createdById FK
-        string title
-        string author
-        string baseKey
-        text lyricsAndChords
-        enum[] liturgicalSeasons "ORDINARIO | CUARESMA | PASCUA | ADVIENTO | NAVIDAD"
-        enum massSuitability "LITURGICO | NO_LITURGICO"
-        boolean isPublic "true = Publico para otros coros | false = Privado"
-        datetime createdAt
-        datetime updatedAt
-    }
+    Choir ||--o{ CalendarEvent : "agenda"
+    Choir ||--o{ MassSchedule : "estructura"
+    Choir ||--o{ RehearsalSchedule : "planifica"
+    MassSchedule ||--o{ MassScheduleItem : "contiene en orden"
+    Song ||--o{ MassScheduleItem : "se canta en"
+    RehearsalSchedule ||--o{ RehearsalBlock : "divide en bloques"
+    RehearsalBlock ||--o{ RehearsalBlockSong : "practica"
+    Song ||--o{ RehearsalBlockSong : "se ensaya en"
+    MassSchedule ||--o{ CalendarEvent : "se vincula a"
+    RehearsalSchedule ||--o{ CalendarEvent : "se vincula a"
 ```
 
 ---
 
-## 7. Endpoints de la API REST
+## 7. Endpoints de la API REST (Sistema Completo)
 
 | Método | Ruta | Rol Requerido | Descripción |
 | :--- | :--- | :--- | :--- |
@@ -160,7 +149,17 @@ erDiagram
 | `POST` | `/api/auth/register` | Registro | Crea un usuario y su coro (`DIRECTOR`) o lo une por código (`MEMBER`). |
 | `GET` | `/api/auth/me` | `DIRECTOR` o `MEMBER` | Devuelve el perfil del usuario autenticado y datos de su coro. |
 | `GET` | `/api/songs` | `DIRECTOR` o `MEMBER` | Buscador libre de cantos (`q`, `season`, `suitability`, `scope`). Aplica filtro estricto de visibilidad por coro. |
-| `GET` | `/api/songs/:id` | `DIRECTOR` o `MEMBER` | Obtiene el detalle de un canto verificando que pertenezca al coro o sea público. |
 | `POST` | `/api/songs` | **Solo `DIRECTOR`** | Registra un nuevo canto en el coro del director definiendo `isPublic`. |
 | `PUT` | `/api/songs/:id` | **Solo `DIRECTOR` (Dueño)** | Actualiza los datos, acordes o visibilidad (`isPublic`) de un canto de su coro. |
 | `DELETE` | `/api/songs/:id` | **Solo `DIRECTOR` (Dueño)** | Elimina un canto perteneciente al coro del director. |
+| `GET` | `/api/calendar` | `DIRECTOR` o `MEMBER` | Obtiene todos los eventos del calendario del coro. |
+| `POST` | `/api/calendar` | **Solo `DIRECTOR`** | Crea un nuevo evento importante, misa o ensayo en el calendario. |
+| `PATCH` | `/api/calendar/:id/move` | **Solo `DIRECTOR`** | Reprograma la fecha de un evento (usado por Drag & Drop). |
+| `DELETE` | `/api/calendar/:id` | **Solo `DIRECTOR`** | Elimina un evento del calendario. |
+| `GET` | `/api/mass-schedules` | `DIRECTOR` o `MEMBER` | Lista los cronogramas de misa con sus cantos en orden, letras y acordes. |
+| `POST` | `/api/mass-schedules` | **Solo `DIRECTOR`** | Crea un cronograma de misa y lo agenda automáticamente en el calendario. |
+| `PUT` | `/api/mass-schedules/:id` | **Solo `DIRECTOR`** | Actualiza el orden, tonos y cantos de un cronograma de misa. |
+| `GET` | `/api/rehearsal-schedules` | `DIRECTOR` o `MEMBER` | Lista los cronogramas de ensayo con sus bloques detallados y cantos. |
+| `POST` | `/api/rehearsal-schedules` | **Solo `DIRECTOR`** | Crea un cronograma de ensayo y lo agenda en el calendario. |
+| `PATCH` | `/api/rehearsal-schedules/:id/blocks/:blockId/toggle` | **Solo `DIRECTOR`** | Marca o desmarca un bloque del ensayo como completado. |
+| `GET` | `/api/choir/members` | `DIRECTOR` o `MEMBER` | Lista los integrantes del coro, sus roles e instrumentos y código de invitación. |

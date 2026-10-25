@@ -1,6 +1,8 @@
 import type {
+  CalendarEventType,
   LiturgicalSeason,
   MassSuitability,
+  RehearsalBlockType,
   Role,
 } from '@cantos/shared';
 
@@ -29,6 +31,10 @@ export interface SongDTO {
   lyricsAndChords: string;
   liturgicalSeasons: LiturgicalSeason[];
   massSuitability: MassSuitability;
+  massMoments?: string[];
+  youtubeUrl?: string | null;
+  sheetMusicUrl?: string | null;
+  audioUrl?: string | null;
   isPublic: boolean;
   createdAt: string;
   updatedAt: string;
@@ -37,7 +43,7 @@ export interface SongDTO {
     name: string;
     parish: string;
   };
-  createdBy: {
+  createdBy?: {
     id: string;
     name: string;
   };
@@ -50,7 +56,98 @@ export interface CreateOrUpdateSongInput {
   lyricsAndChords: string;
   liturgicalSeasons: LiturgicalSeason[];
   massSuitability: MassSuitability;
+  massMoments?: string[];
+  youtubeUrl?: string;
+  sheetMusicUrl?: string;
+  audioUrl?: string;
   isPublic: boolean;
+}
+
+export interface CalendarEventDTO {
+  id: string;
+  choirId: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  startAt: string;
+  endAt: string | null;
+  type: CalendarEventType;
+  massScheduleId: string | null;
+  rehearsalScheduleId: string | null;
+  massSchedule?: {
+    id: string;
+    title: string;
+    liturgicalSeason: LiturgicalSeason;
+  } | null;
+  rehearsalSchedule?: {
+    id: string;
+    title: string;
+    generalObjective: string;
+  } | null;
+}
+
+export interface MassScheduleItemDTO {
+  id: string;
+  sortOrder: number;
+  momentName: string;
+  songId: string | null;
+  targetKey: string | null;
+  directorNotes: string | null;
+  song: SongDTO | null;
+}
+
+export interface MassScheduleDTO {
+  id: string;
+  choirId: string;
+  title: string;
+  date: string;
+  liturgicalSeason: LiturgicalSeason;
+  celebrantNotes: string | null;
+  items: MassScheduleItemDTO[];
+}
+
+export interface RehearsalBlockDTO {
+  id: string;
+  sortOrder: number;
+  title: string;
+  blockType: RehearsalBlockType;
+  durationMinutes: number;
+  detailedNotes: string;
+  isCompleted: boolean;
+  songs: {
+    id: string;
+    songId: string;
+    focusNotes: string | null;
+    song: SongDTO;
+  }[];
+}
+
+export interface RehearsalScheduleDTO {
+  id: string;
+  choirId: string;
+  title: string;
+  date: string;
+  location: string;
+  generalObjective: string;
+  blocks: RehearsalBlockDTO[];
+}
+
+export interface ChoirDetailsDTO {
+  id: string;
+  name: string;
+  parish: string;
+  inviteCode: string;
+  members: {
+    id: string;
+    role: Role;
+    instrument: string | null;
+    joinedAt: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  }[];
 }
 
 const TOKEN_KEY = 'cantos_auth_token';
@@ -148,4 +245,120 @@ export const api = {
     request<{ success: boolean }>(`/api/songs/${id}`, {
       method: 'DELETE',
     }),
+
+  // Calendario Manipulable
+  getCalendarEvents: () =>
+    request<{ events: CalendarEventDTO[] }>('/api/calendar'),
+
+  createCalendarEvent: (payload: {
+    title: string;
+    description?: string;
+    location?: string;
+    startAt: string;
+    endAt?: string;
+    type: CalendarEventType;
+    massScheduleId?: string;
+    rehearsalScheduleId?: string;
+  }) =>
+    request<{ event: CalendarEventDTO }>('/api/calendar', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  moveCalendarEvent: (id: string, startAt: string) =>
+    request<{ event: CalendarEventDTO }>(`/api/calendar/${id}/move`, {
+      method: 'PATCH',
+      body: JSON.stringify({ startAt }),
+    }),
+
+  deleteCalendarEvent: (id: string) =>
+    request<{ success: boolean }>(`/api/calendar/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // Cronogramas de Misa
+  getMassSchedules: () =>
+    request<{ schedules: MassScheduleDTO[] }>('/api/mass-schedules'),
+
+  createMassSchedule: (payload: {
+    title: string;
+    date: string;
+    liturgicalSeason: LiturgicalSeason;
+    celebrantNotes?: string;
+    items: {
+      momentName: string;
+      songId?: string | null;
+      targetKey?: string | null;
+      directorNotes?: string | null;
+    }[];
+  }) =>
+    request<{ schedule: MassScheduleDTO }>('/api/mass-schedules', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  updateMassSchedule: (
+    id: string,
+    payload: {
+      title: string;
+      date: string;
+      liturgicalSeason: LiturgicalSeason;
+      celebrantNotes?: string;
+      items: {
+        momentName: string;
+        songId?: string | null;
+        targetKey?: string | null;
+        directorNotes?: string | null;
+      }[];
+    }
+  ) =>
+    request<{ schedule: MassScheduleDTO }>(`/api/mass-schedules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteMassSchedule: (id: string) =>
+    request<{ success: boolean }>(`/api/mass-schedules/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // Cronogramas de Ensayo
+  getRehearsalSchedules: () =>
+    request<{ rehearsals: RehearsalScheduleDTO[] }>('/api/rehearsal-schedules'),
+
+  createRehearsalSchedule: (payload: {
+    title: string;
+    date: string;
+    location: string;
+    generalObjective: string;
+    blocks: {
+      title: string;
+      blockType: RehearsalBlockType;
+      durationMinutes: number;
+      detailedNotes: string;
+      isCompleted?: boolean;
+      songIds?: string[];
+    }[];
+  }) =>
+    request<{ rehearsal: RehearsalScheduleDTO }>('/api/rehearsal-schedules', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  toggleRehearsalBlock: (scheduleId: string, blockId: string) =>
+    request<{ success: boolean; isCompleted: boolean }>(
+      `/api/rehearsal-schedules/${scheduleId}/blocks/${blockId}/toggle`,
+      {
+        method: 'PATCH',
+      }
+    ),
+
+  deleteRehearsalSchedule: (id: string) =>
+    request<{ success: boolean }>(`/api/rehearsal-schedules/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // Mi Coro
+  getChoirMembers: () =>
+    request<{ choir: ChoirDetailsDTO }>('/api/choir/members'),
 };

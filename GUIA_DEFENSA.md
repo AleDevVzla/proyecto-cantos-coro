@@ -1,10 +1,10 @@
-# 🎓 Guía de Estudio para la Defensa del Sistema (Versión 1.0)
+# 🎓 Guía de Estudio para la Defensa del Sistema Completo (Versión 2.0)
 
-Esta guía está preparada específicamente para defender la **Primera Entrega (Versión 1.0: Autenticación Cerrada y Módulo de Cantos)** ante las autoridades evaluadoras, cubriendo los **4 pilares exigidos**:
-1. **Funcionalidad** (Qué hace, reglas de negocio y seguridad de roles)
-2. **Diseño** (UI/UX ergonómico para músicos y Arquitectura en 3 capas)
+Esta guía está preparada específicamente para defender el **Sistema Completo (Autenticación Cerrada, Módulo de Cantos, Calendario Manipulable, Cronograma de Misa y Cronograma de Ensayos)** ante las autoridades evaluadoras, cubriendo los **4 pilares exigidos**:
+1. **Funcionalidad** (Qué hace, reglas de negocio, seguridad de roles y planificación litúrgica/operativa)
+2. **Diseño** (UI/UX ergonómico para músicos, Modo Atril y Arquitectura en 3 capas)
 3. **Estructura** (Organización Monorepo y contenedores Docker)
-4. **Implementación** (Justificación del stack, consultas Prisma y algoritmo de acordes)
+4. **Implementación** (Justificación del stack, consultas Prisma, relaciones SQL y algoritmo de acordes)
 
 ---
 
@@ -40,6 +40,16 @@ El sistema implementa estrictamente las dos divisiones solicitadas:
 2. **Por Apropiación para una Misa**:
    - **Litúrgico** (Apropiado para la liturgia de la Misa)
    - **No litúrgico** (Cantos de animación, adoración, retiros, etc.)
+
+### 1.4. Planificación Operativa: Calendario, Cronograma de Misa y Cronograma de Ensayos
+1. **Calendario Manipulable del Coro**:
+   - Permite al Director agendar *Santas Misas*, *Ensayos* y *Eventos Importantes*, y reprogramarlos arrastrándolos con el mouse (**Drag & Drop**) a cualquier otro día o con los botones rápidos `-1 Día / +1 Día`.
+   - Está conectado relacionalmente con los cronogramas: al hacer clic en un evento de Misa o Ensayo, lleva en 1 clic a su cronograma completo.
+2. **Cronograma de Misa y Modo Atril**:
+   - Permite estructurar el orden litúrgico de los cantos de una celebración (*Entrada, Señor Ten Piedad, Gloria, Ofertorio, Santo, Cordero, Comunión, Salida*), definiendo el **tono específico (`targetKey`)** para esa Misa.
+   - Incluye **Modo Atril Paso a Paso** y **Vista Continua**, donde todo el coro lee las letras y acordes en orden, ya transportados automáticamente al tono acordado para esa misa.
+3. **Cronograma de Ensayos ("Saber qué se hará a cabalidad")**:
+   - Divide cada ensayo en **bloques ordenados por actividad y duración** (*Oración, Vocalización, Práctica de Canto, Repaso de Misa, Avisos*), mostrando el objetivo general, el tiempo total, las instrucciones técnicas detalladas del director, los cantos vinculados (con apertura inmediata de su letra y acordes) y un checklist de progreso en tiempo real.
 
 ---
 
@@ -104,28 +114,38 @@ En dos capas:
 1. **En el Frontend ([apps/web/src/App.tsx](apps/web/src/App.tsx))**: El botón *"Subir Canto"* y los botones de *"Editar / Cambiar Visibilidad / Eliminar"* solo se renderizan si `user.role === 'DIRECTOR'`.
 2. **En el Backend ([apps/api/src/index.ts](apps/api/src/index.ts))**: En `POST /api/songs`, `PUT /api/songs/:id` y `DELETE /api/songs/:id`, el servidor verifica `if (authUser.role !== 'DIRECTOR')` y además comprueba que `existing.choirId === authUser.choirId`, devolviendo `HTTP 403 Forbidden` si un miembro intenta enviar una petición directa.
 
-### 4.4. ¿Cómo funciona el algoritmo de acordes y transposición?
+### 4.4. ¿Cómo funciona el algoritmo de acordes y transposición automática en Misas?
 En [packages/shared/src/index.ts](packages/shared/src/index.ts):
 1. Las letras se guardan con marcas de acorde entre corchetes: `[Re]Juntos como her[La]manos`.
 2. Una expresión regular (`/\[([^\]]+)\]([^\[]*)/g`) separa cada fragmento en `{ chord, lyric }`.
 3. Para transportar el tono (`+1` o `-1`), `transposeSingleChord` convierte la raíz del acorde a su índice numérico en la escala cromática de 12 semitonos (`0` = `Do/C` ... `11` = `Si/B`), aplica aritmética modular `((baseIndex + semitones) % 12 + 12) % 12` y devuelve el nuevo acorde conservando su sufijo (`m`, `7`, `#`, etc.).
+4. En el **Cronograma de Misa**, si un canto está guardado en `Do` pero el Director define que en esa Misa se cantará en `Re` (`targetKey`), la función `getSemitoneDiffBetweenKeys('Do', 'Re')` calcula automáticamente la diferencia (`+2` semitonos) y renderiza toda la canción en `Re` sin alterar el canto original de la base de datos.
+
+### 4.5. Diseño Relacional de Calendario, Misas y Ensayos en PostgreSQL
+En [apps/api/prisma/schema.prisma](apps/api/prisma/schema.prisma):
+- **`MassSchedule` (1) ↔ (N) `MassScheduleItem` (N) ↔ (1) `Song`**: Permite reutilizar cualquier canto (del coro o público de otro coro) en múltiples misas, manteniendo un `sortOrder` (orden litúrgico) y un `targetKey` independiente por cada misa.
+- **`RehearsalSchedule` (1) ↔ (N) `RehearsalBlock` (1) ↔ (N) `RehearsalBlockSong` (N) ↔ (1) `Song`**: Modela cada bloque de tiempo del ensayo con su duración (`durationMinutes`), estado (`isCompleted`) y tabla pivote hacia los cantos que se practicarán en ese bloque.
+- **`CalendarEvent`**: Se vincula opcionalmente mediante llaves foráneas (`massScheduleId`, `rehearsalScheduleId`) para que al crear un Cronograma de Misa o de Ensayo, quede agendado automáticamente en el calendario del coro.
 
 ---
 
-## 5. GUION PASO A PASO PARA LA DEMOSTRACIÓN EN VIVO
+## 5. GUION PASO A PASO PARA LA DEMOSTRACIÓN EN VIVO (SISTEMA COMPLETO)
 
 1. **Mostrar el Login Cerrado**:
-   - Abre `http://localhost:5173`. Explica que nadie puede ver ningún canto sin autenticarse.
-2. **Entrar como Director del Coro Santa Cecilia**:
-   - Haz clic en el acceso rápido **"DIRECTOR — Coro Santa Cecilia"**.
-   - Muestra en la barra superior el badge **"Rol: Director del Coro"** y el botón **"Subir Canto"**.
-   - Abre **"Subir Canto"** y enseña el editor con vista previa en vivo, el orden exacto de los tiempos (*1. Ordinario, 2. Cuaresma, 3. Pascua, 4. Adviento, 5. Navidad*), la opción *Litúrgico / No litúrgico* y el selector **Público vs Privado**.
-3. **Probar el Buscador Libre y el Visor de Acordes**:
-   - Filtra por **Cuaresma**, luego por **Pascua**, luego por **No litúrgico**.
-   - Selecciona un canto y presiona los botones `-` y `+` de **Tono** para mostrar cómo todos los acordes cambian en tiempo real sobre las sílabas. Prueba también el botón **Notación: C, D, E** y el **Modo Atril**.
-4. **Demostrar la Privacidad entre Coros y el Rol Miembro**:
-   - Observa que en el Coro Santa Cecilia existe el canto *"Pueblo de Reyes"* marcado como **Privado de mi coro**, y *"Juntos como Hermanos"* marcado como **Público**.
-   - Cierra sesión (`Salir`) y entra como **"MIEMBRO — Coro San Miguel (Otro Coro)"**.
-   - Muestra que:
-     1. Ya **no aparece** el botón de *"Subir Canto"* ni los botones de editar/eliminar (porque es `Miembro`).
-     2. Al filtrar por **"Otros Coros"**, puede ver *"Juntos como Hermanos"* (porque el Director de Santa Cecilia lo hizo **Público**), pero **no puede ver** *"Pueblo de Reyes"* (porque es **Privado** de Santa Cecilia).
+   - Abre `http://localhost:5173`. Explica que el sistema es 100% cerrado bajo autenticación y que el nivel base ("público") son los miembros autenticados de los coros.
+2. **Módulo 1 y 2 — Buscador Libre y Subida de Cantos del Director**:
+   - Entra con **"DIRECTOR — Coro Santa Cecilia"**.
+   - Muestra el buscador libre, el filtro por Tiempo en el Año en el orden exacto (*1. Ordinario, 2. Cuaresma, 3. Pascua, 4. Adviento, 5. Navidad*), el filtro *Litúrgico / No litúrgico*, el transpositor de acordes (`-1` / `+1`) y el formulario **"Subir Canto"** con vista previa en vivo y selector **Público vs Privado**.
+3. **Módulo 3 — Calendario Manipulable del Coro**:
+   - Abre la pestaña **"Calendario Manipulable"**.
+   - Arrastra un evento con el mouse (*Drag & Drop*) a otro día del mes o usa los botones `-1 Día / +1 Día` para demostrar que es manipulable en tiempo real.
+   - Haz clic en el evento *"Misa Dominical Solemne"* y presiona **"Ver Cronograma de Misa"**.
+4. **Módulo 4 — Cronograma de Misa y Modo Atril**:
+   - Muestra cómo está estructurado el orden de la Misa (*1. Entrada, 2. Señor Ten Piedad, 3. Gloria, 4. Ofertorio, 5. Santo, 6. Cordero, 7. Comunión, 8. Salida*).
+   - Cambia a **"Atril Paso a Paso"** o **"Vista Continua (Toda la Misa)"** para mostrar cómo el coro lee las letras y acordes en orden durante la celebración.
+5. **Módulo 5 — Cronograma de Ensayos ("Saber qué se hará a cabalidad")**:
+   - Abre la pestaña **"Cronograma de Ensayos"**.
+   - Muestra el objetivo general, la duración total en minutos, la barra de porcentaje de avance y el desglose bloque por bloque.
+   - Marca un bloque como completado y haz clic en cualquiera de los cantos vinculados al bloque para abrir su **Letra y Acordes** sin salir del ensayo.
+6. **Demostración de Rol Miembro y Privacidad entre Coros**:
+   - Cierra sesión y entra como **"MIEMBRO — Coro San Miguel (Otro Coro)"** para demostrar que no puede modificar datos y que solo ve los cantos de otros coros que fueron marcados como **Públicos**.

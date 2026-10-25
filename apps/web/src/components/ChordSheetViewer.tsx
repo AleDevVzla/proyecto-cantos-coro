@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
+  getSemitoneDiffBetweenKeys,
   parseChordProText,
   transposeSingleChord,
   type ChordNotation,
@@ -19,19 +20,33 @@ import {
 interface ChordSheetViewerProps {
   lyricsAndChords: string;
   baseKey: string;
+  targetKeyOverride?: string | null;
   compact?: boolean;
 }
 
 export const ChordSheetViewer: React.FC<ChordSheetViewerProps> = ({
   lyricsAndChords,
   baseKey,
+  targetKeyOverride,
   compact = false,
 }) => {
-  const [semitones, setSemitones] = useState(0);
+  const initialOffset = targetKeyOverride
+    ? getSemitoneDiffBetweenKeys(baseKey, targetKeyOverride)
+    : 0;
+
+  const [semitones, setSemitones] = useState(initialOffset);
   const [notation, setNotation] = useState<ChordNotation>('LATIN');
   const [showChords, setShowChords] = useState(true);
   const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg' | 'xl'>('base');
   const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    setSemitones(
+      targetKeyOverride
+        ? getSemitoneDiffBetweenKeys(baseKey, targetKeyOverride)
+        : 0
+    );
+  }, [baseKey, targetKeyOverride]);
 
   const lines = parseChordProText(lyricsAndChords, semitones, notation);
   const currentKey = transposeSingleChord(baseKey, semitones, notation);

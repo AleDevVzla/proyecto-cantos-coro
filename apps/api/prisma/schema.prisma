@@ -26,6 +26,20 @@ enum MassSuitability {
   NO_LITURGICO
 }
 
+enum CalendarEventType {
+  MASS
+  REHEARSAL
+  IMPORTANT_EVENT
+}
+
+enum RehearsalBlockType {
+  ORACION
+  VOCALIZACION
+  PRACTICA_CANTO
+  REPASO_MISA
+  AVISOS
+}
+
 model User {
   id           String        @id @default(uuid())
   email        String        @unique
@@ -37,22 +51,25 @@ model User {
 }
 
 model Choir {
-  id          String        @id @default(uuid())
-  name        String
-  parish      String
-  inviteCode  String        @unique
-  createdAt   DateTime      @default(now())
-  members     ChoirMember[]
-  songs       Song[]
+  id                 String              @id @default(uuid())
+  name               String
+  parish             String
+  inviteCode         String              @unique
+  createdAt          DateTime            @default(now())
+  members            ChoirMember[]
+  songs              Song[]
+  calendarEvents     CalendarEvent[]
+  massSchedules      MassSchedule[]
+  rehearsalSchedules RehearsalSchedule[]
 }
 
 model ChoirMember {
-  id        String   @id @default(uuid())
-  userId    String
-  choirId   String
-  role      Role     @default(MEMBER)
+  id         String   @id @default(uuid())
+  userId     String
+  choirId    String
+  role       Role     @default(MEMBER)
   instrument String?
-  joinedAt  DateTime @default(now())
+  joinedAt   DateTime @default(now())
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   choir Choir @relation(fields: [choirId], references: [id], onDelete: Cascade)
@@ -70,14 +87,118 @@ model Song {
   lyricsAndChords   String             @db.Text
   liturgicalSeasons LiturgicalSeason[]
   massSuitability   MassSuitability    @default(LITURGICO)
+  massMoments       String[]           @default([])
+  youtubeUrl        String?
+  sheetMusicUrl     String?
+  audioUrl          String?
   isPublic          Boolean            @default(false)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
-  choir     Choir @relation(fields: [choirId], references: [id], onDelete: Cascade)
-  createdBy User  @relation("SongCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  choir          Choir                @relation(fields: [choirId], references: [id], onDelete: Cascade)
+  createdBy      User                 @relation("SongCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  massItems      MassScheduleItem[]
+  rehearsalSongs RehearsalBlockSong[]
 
   @@index([choirId])
   @@index([isPublic])
   @@index([massSuitability])
+}
+
+model MassSchedule {
+  id               String             @id @default(uuid())
+  choirId          String
+  title            String
+  date             DateTime
+  liturgicalSeason LiturgicalSeason   @default(ORDINARIO)
+  celebrantNotes   String?            @db.Text
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  choir          Choir              @relation(fields: [choirId], references: [id], onDelete: Cascade)
+  items          MassScheduleItem[]
+  calendarEvents CalendarEvent[]
+
+  @@index([choirId])
+}
+
+model MassScheduleItem {
+  id             String  @id @default(uuid())
+  massScheduleId String
+  songId         String?
+  momentName     String
+  sortOrder      Int
+  targetKey      String?
+  directorNotes  String? @db.Text
+
+  massSchedule MassSchedule @relation(fields: [massScheduleId], references: [id], onDelete: Cascade)
+  song         Song?        @relation(fields: [songId], references: [id], onDelete: SetNull)
+
+  @@index([massScheduleId])
+}
+
+model RehearsalSchedule {
+  id               String           @id @default(uuid())
+  choirId          String
+  title            String
+  date             DateTime
+  location         String           @default("Salón Parroquial")
+  generalObjective String           @db.Text
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  choir          Choir            @relation(fields: [choirId], references: [id], onDelete: Cascade)
+  blocks         RehearsalBlock[]
+  calendarEvents CalendarEvent[]
+
+  @@index([choirId])
+}
+
+model RehearsalBlock {
+  id                  String             @id @default(uuid())
+  rehearsalScheduleId String
+  sortOrder           Int
+  title               String
+  blockType           RehearsalBlockType @default(PRACTICA_CANTO)
+  durationMinutes     Int                @default(15)
+  detailedNotes       String             @db.Text
+  isCompleted         Boolean            @default(false)
+
+  rehearsalSchedule RehearsalSchedule    @relation(fields: [rehearsalScheduleId], references: [id], onDelete: Cascade)
+  songs             RehearsalBlockSong[]
+
+  @@index([rehearsalScheduleId])
+}
+
+model RehearsalBlockSong {
+  id               String  @id @default(uuid())
+  rehearsalBlockId String
+  songId           String
+  focusNotes       String?
+
+  rehearsalBlock RehearsalBlock @relation(fields: [rehearsalBlockId], references: [id], onDelete: Cascade)
+  song           Song           @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([rehearsalBlockId, songId])
+}
+
+model CalendarEvent {
+  id                  String            @id @default(uuid())
+  choirId             String
+  title               String
+  description         String?           @db.Text
+  location            String?
+  startAt             DateTime
+  endAt               DateTime?
+  type                CalendarEventType @default(IMPORTANT_EVENT)
+  massScheduleId      String?
+  rehearsalScheduleId String?
+  createdAt           DateTime          @default(now())
+
+  choir             Choir              @relation(fields: [choirId], references: [id], onDelete: Cascade)
+  massSchedule      MassSchedule?      @relation(fields: [massScheduleId], references: [id], onDelete: SetNull)
+  rehearsalSchedule RehearsalSchedule? @relation(fields: [rehearsalScheduleId], references: [id], onDelete: SetNull)
+
+  @@index([choirId])
+  @@index([startAt])
 }
