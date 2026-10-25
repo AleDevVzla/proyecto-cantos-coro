@@ -1,0 +1,17 @@
+{
+  "name": "cantos-coro-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "bun --cwd apps/api dev",
+    "dev:web": "bun --cwd apps/web dev",
+    "db:push": "bun --cwd apps/api db:push",
+    "db:seed": "bun --cwd apps/api db:seed",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down"
+  }
+}

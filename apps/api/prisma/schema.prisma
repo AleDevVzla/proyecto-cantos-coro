@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DIRECTOR
+  MEMBER
+}
+
+// Orden estricto: Ordinario - Cuaresma - Pascua - Adviento - Navidad
+enum LiturgicalSeason {
+  ORDINARIO
+  CUARESMA
+  PASCUA
+  ADVIENTO
+  NAVIDAD
+}
+
+enum MassSuitability {
+  LITURGICO
+  NO_LITURGICO
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime      @default(now())
+  memberships  ChoirMember[]
+  createdSongs Song[]        @relation("SongCreator")
+}
+
+model Choir {
+  id          String        @id @default(uuid())
+  name        String
+  parish      String
+  inviteCode  String        @unique
+  createdAt   DateTime      @default(now())
+  members     ChoirMember[]
+  songs       Song[]
+}
+
+model ChoirMember {
+  id        String   @id @default(uuid())
+  userId    String
+  choirId   String
+  role      Role     @default(MEMBER)
+  instrument String?
+  joinedAt  DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  choir Choir @relation(fields: [choirId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, choirId])
+}
+
+model Song {
+  id                String             @id @default(uuid())
+  choirId           String
+  createdById       String
+  title             String
+  author            String
+  baseKey           String             @default("Do")
+  lyricsAndChords   String             @db.Text
+  liturgicalSeasons LiturgicalSeason[]
+  massSuitability   MassSuitability    @default(LITURGICO)
+  isPublic          Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  choir     Choir @relation(fields: [choirId], references: [id], onDelete: Cascade)
+  createdBy User  @relation("SongCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([choirId])
+  @@index([isPublic])
+  @@index([massSuitability])
+}
