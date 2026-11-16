@@ -1,4 +1,4 @@
-# Cantoral Coral — Sistema Integral de Gestión de Coros, Cantos, Misas y Ensayos (Versión 2.0 Completa)
+# Corasis — Sistema Integral de Gestión de Coros, Cantos, Misas y Ensayos (Versión 2.0 Completa)
 
 Plataforma web integral, cerrada bajo autenticación, para la gestión del repertorio litúrgico, calendario manipulable de eventos, estructuración de cronogramas de misa (con vista de letra y acordes en orden) y planificación detallada de ensayos para coros.
 

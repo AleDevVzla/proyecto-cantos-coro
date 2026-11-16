@@ -40,6 +40,8 @@ import {
   Calendar as CalendarIcon,
   ClipboardList,
   Users,
+  Moon,
+  Sun,
 } from 'lucide-react';
 
 type ActiveModuleTab = 'SONGS' | 'CALENDAR' | 'MASS' | 'REHEARSAL' | 'CHOIR';
@@ -48,6 +50,17 @@ export const App: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [activeTab, setActiveTab] = useState<ActiveModuleTab>('SONGS');
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('corasis-theme');
+    return savedTheme
+      ? savedTheme === 'dark'
+      : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    localStorage.setItem('corasis-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   // Filtros del Buscador Libre de Cantos
   const [searchQuery, setSearchQuery] = useState('');
@@ -200,7 +213,7 @@ export const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-stone-900 text-amber-200">
         <div className="flex items-center gap-3 text-sm font-semibold">
           <Music2 className="h-5 w-5 animate-bounce text-amber-400" />
-          Cargando Cantoral Coral...
+          Cargando Corasis...
         </div>
       </div>
     );
@@ -208,7 +221,13 @@ export const App: React.FC = () => {
 
   // SISTEMA CERRADO BAJO AUTENTICACIÓN: Si no hay sesión, mostrar Login obligatorio
   if (!user) {
-    return <LoginView onSuccess={handleLoginSuccess} />;
+    return (
+      <LoginView
+        onSuccess={handleLoginSuccess}
+        isDarkMode={isDarkMode}
+        onToggleTheme={() => setIsDarkMode((current) => !current)}
+      />
+    );
   }
 
   const isDirector = user.role === 'DIRECTOR';
@@ -220,11 +239,11 @@ export const App: React.FC = () => {
       {/* Barra Superior de Identidad y Rol */}
       <header className="sticky top-0 z-30 border-b border-stone-800 bg-stone-900 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="h-10 w-10 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow">
+          <div className="flex min-w-0 max-w-full items-center gap-3.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 text-stone-950 shadow">
               <Music2 className="h-5 w-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="font-bold text-base sm:text-lg tracking-tight">
                   {user.choirName}
@@ -244,7 +263,7 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex max-w-full flex-wrap items-center justify-start gap-2 sm:justify-end">
             {/* Indicador de Rol */}
             <div
               className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border ${
@@ -280,6 +299,17 @@ export const App: React.FC = () => {
                 Subir Canto
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => setIsDarkMode((current) => !current)}
+              aria-label={isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'}
+              aria-pressed={isDarkMode}
+              title={isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-stone-700 bg-stone-800 text-amber-200 transition hover:bg-stone-700"
+            >
+              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
 
             <button
               type="button"
@@ -366,7 +396,7 @@ export const App: React.FC = () => {
             </div>
 
             {/* Filtro Apropiado para Misa: Litúrgico - No litúrgico */}
-            <div className="lg:col-span-3 flex items-center rounded-2xl border border-stone-200 bg-stone-100 p-1">
+            <div className="lg:col-span-3 flex items-center rounded-2xl border border-stone-300 bg-stone-200/80 p-1">
               {(
                 [
                   { id: 'ALL', label: 'Todos' },
@@ -380,8 +410,12 @@ export const App: React.FC = () => {
                   onClick={() => setSelectedSuitability(opt.id)}
                   className={`flex-1 rounded-xl py-1.5 text-xs font-bold transition ${
                     selectedSuitability === opt.id
-                      ? 'bg-white text-stone-900 shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900'
+                      ? opt.id === 'LITURGICO'
+                        ? 'bg-sky-700 text-white shadow-md ring-2 ring-sky-300'
+                        : opt.id === 'NO_LITURGICO'
+                          ? 'bg-orange-700 text-white shadow-md ring-2 ring-orange-300'
+                          : 'bg-stone-900 text-white shadow-md ring-2 ring-stone-400'
+                      : 'text-stone-600 hover:bg-white/70 hover:text-stone-900'
                   }`}
                 >
                   {opt.label}
@@ -390,7 +424,7 @@ export const App: React.FC = () => {
             </div>
 
             {/* Filtro de Alcance: Mi Coro vs Públicos de otros coros */}
-            <div className="lg:col-span-3 flex items-center rounded-2xl border border-stone-200 bg-stone-100 p-1">
+            <div className="lg:col-span-3 flex items-center rounded-2xl border border-stone-300 bg-stone-200/80 p-1">
               {(
                 [
                   { id: 'ALL', label: 'Todos' },
@@ -404,8 +438,12 @@ export const App: React.FC = () => {
                   onClick={() => setSelectedScope(opt.id)}
                   className={`flex-1 rounded-xl py-1.5 text-xs font-bold transition ${
                     selectedScope === opt.id
-                      ? 'bg-white text-stone-900 shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900'
+                      ? opt.id === 'MY_CHOIR'
+                        ? 'bg-amber-600 text-white shadow-md ring-2 ring-amber-300'
+                        : opt.id === 'PUBLIC_OTHER'
+                          ? 'bg-teal-700 text-white shadow-md ring-2 ring-teal-300'
+                          : 'bg-stone-900 text-white shadow-md ring-2 ring-stone-400'
+                      : 'text-stone-600 hover:bg-white/70 hover:text-stone-900'
                   }`}
                 >
                   {opt.label}
@@ -504,10 +542,10 @@ export const App: React.FC = () => {
                     key={song.id}
                     type="button"
                     onClick={() => setActiveSong(song)}
-                    className={`w-full text-left rounded-2xl border p-4 transition shadow-sm ${
+                    className={`song-list-item w-full text-left rounded-2xl border p-4 transition-all duration-150 shadow-sm hover:shadow-md ${
                       isSelected
-                        ? 'border-amber-600 bg-amber-50/50 ring-2 ring-amber-500/20'
-                        : 'border-stone-200 bg-white hover:border-stone-300'
+                        ? 'active-song-card border-amber-600 bg-amber-50/50 ring-2 ring-amber-500/20 hover:border-amber-700 hover:bg-amber-100'
+                        : 'border-stone-200 bg-white hover:border-amber-300 hover:bg-amber-50'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">

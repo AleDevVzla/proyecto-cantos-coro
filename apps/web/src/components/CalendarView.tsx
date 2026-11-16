@@ -187,7 +187,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end">
           {/* Selector de Mes */}
           <div className="flex items-center rounded-2xl border border-stone-200 bg-stone-50 p-1">
             <button
