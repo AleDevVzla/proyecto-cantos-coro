@@ -61,7 +61,7 @@ export const ChordSheetViewer: React.FC<ChordSheetViewerProps> = ({
   return (
     <div className="space-y-4">
       {!compact && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-100/80 p-3">
+        <div className="chord-sheet-toolbar flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-100/80 p-3">
           {/* Transpositor de Tono */}
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-stone-600">
@@ -198,7 +198,7 @@ export const ChordSheetViewer: React.FC<ChordSheetViewerProps> = ({
               return (
                 <div key={lineIdx} className="pt-3 pb-1">
                   <span
-                    className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold tracking-wider uppercase ${
+                    className={`song-section-indicator inline-block rounded-md px-2.5 py-0.5 text-xs font-bold tracking-wider uppercase ${
                       darkMode
                         ? 'bg-amber-950/80 text-amber-300 border border-amber-800/60'
                         : 'bg-amber-100/80 text-amber-900 border border-amber-200'

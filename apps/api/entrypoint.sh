@@ -2,7 +2,6 @@
 set -e
 
 echo "🔄 Sincronizando esquema Prisma con PostgreSQL..."
-cd /app
 bun prisma generate
 bun prisma db push --accept-data-loss
 

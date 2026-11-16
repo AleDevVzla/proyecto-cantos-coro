@@ -1,18 +1,19 @@
-FROM chazki-backend:latest
+FROM oven/bun:1
+
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-RUN rm -rf /app/src /app/test /app/prisma /app/speech_database.msp
+COPY package.json ./
+COPY packages/shared ./packages/shared
+COPY apps/api ./apps/api
 
-COPY packages/shared /app/node_modules/@cantos/shared
-COPY apps/api/package.json /app/package.json
-COPY apps/api/tsconfig.json /app/tsconfig.json
-COPY apps/api/prisma /app/prisma
-COPY apps/api/src /app/src
-COPY apps/api/entrypoint.sh /app/entrypoint.sh
+RUN bun install
 
-RUN chmod +x /app/entrypoint.sh && bun prisma generate
+WORKDIR /app/apps/api
+
+RUN chmod +x ./entrypoint.sh && bun prisma generate
 
 EXPOSE 4000
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/apps/api/entrypoint.sh"]
